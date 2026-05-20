@@ -51,11 +51,11 @@ Linux From Scratch (LFS) sistemi, resmi dökümantasyonda yer alan 11 ana bölü
 * **Bölüm 6 - Temel Araçların Derlenmesi:** İlk oluşturulan toolchain kullanılarak, bir sonraki aşamada sistemi ayağa kaldıracak geçici yardımcı programlar derlenmiştir.
 
 ### Faz 3: İzole Ortama Geçiş ve Nihai Sistem İnşası (Bölüm 7 - 8)
-* **Bölüm 7 - Chroot ve Sanal Dosya Sistemleri:** Host sistemin `/dev`, `/proc`, `/sys` gibi sanal dosya sistemleri LFS diskine bağlanmış ve `chroot (change root)` komutu ile host sistemden tamamen izole, bağımsız bir "Sandbox" ortamına geçilmiştir.
+* **Bölüm 7 - Chroot Ortamına Giriş ve Geçici Araçların İnşası:** Host sistemin `/dev`, `/proc`, `/sys` gibi sanal dosya sistemleri LFS diskine bağlanmış ve `chroot (change root)` komutu ile host sistemden tamamen izole, bağımsız bir "Sandbox" ortamına geçilmiştir.
 * **Bölüm 8 - Temel Sistem Yazılımlarının Derlenmesi:** Chroot ortamının sağladığı izole avantajla, sistemin nihai paketleri  kendi kütüphaneleriyle sıfırdan derlenmiştir. 
 
 ### Faz 4: Sistem Yapılandırması ve Boot Süreci (Bölüm 9 - 11)
-* **Bölüm 9 - Sistem Konfigürasyonu:** Ağ ayarları (Network configuration), `fstab` (disk bağlama tablosu), saat dilimi ve yerel dil (locale) ayarları yapılmıştır.
+* **Bölüm 9 - Sistem Konfigürasyonu:** Ağ ayarları , `fstab` (disk bağlama tablosu), saat dilimi ve yerel dil (locale) ayarları yapılmıştır.
 * **Bölüm 10 - Kernel ve Bootloader Kurulumu:** İşletim sisteminin kalbi olan **Linux Çekirdeği (Kernel 6.16.1)** donanıma uygun şekilde konfigüre edilerek derlenmiş ve `GRUB 2.12` bootloader kurulumu tamamlanmıştır.
 * **Bölüm 11 - Kapanış:** Kurulum başarıyla tamamlanarak sistem ilk kez bağımsız (standalone) olarak boot edilmeye hazır hale getirilmiştir.
 
@@ -133,7 +133,7 @@ chown root:root $LFS/sources/*
 ```
 Son olarak chown komutu ile sources klasörünün içindeki tüm kaynak dosyaların sahipliğini root kullanıcısına devrediyoruz.
 
-## Bölüm 4: Son Hazırlıklar
+## Bölüm 4: Çalışma Ortamı Yapılandırması
 
 Bu bölümde geçici sistemin kurulumu ve hazırlığı için bazı ek işlemler gerçekleştirilecektir. `$LFS` dizini altında geçici araçların kurulacağı bir dizi dizin oluşturulacak, ayrıcalıksız bir kullanıcı eklenecek ve bu kullanıcı için uygun bir derleme ortamı hazırlanacaktır.
 
@@ -503,7 +503,7 @@ LFS sisteminin gerçek anlamda oluşturulduğu bölümdür. Hepsi sırayla açı
 
 Stripping yapılmadan önce 4.6 Gb civarındaydı stripping yapıldıktan sonra 1.9 gb düşmüştür.
 
-## Bölüm 9: Sistem Yapılandırması
+## Bölüm 9: Sistem Konfigürasyonu
 
 LFS sürecinde sistemin artık çalışabilir ve boot edilebilir hale getirildiği bölümdür. Bu bölümün temel amacı kernel yüklendikten sonra sistemin nasıl davranacağını, donanımları nasıl tanıyacağını ve dış dünya ile nasıl iletişim kuracağını belirleyen kurallar setini (konfigürasyon dosyalarını) oluşturmaktır.
 
@@ -561,7 +561,7 @@ Ağ arayüzü ve DNS tanımlamalarının ardından, sistemin dışarıdaki bir D
 /etc/sysconfig/console dan ayarlanabilir.
 
 
-## 10. Bölüm: LFS Sistemini Önyüklenebilir Hale Getirme
+## 10. Bölüm: Kernel ve Bootloader Kurulumu
 
 LFS sistemini önyüklenebilir hale getirildiği bölüm. Bu bölümde `/etc/fstab` dosyasının oluşturulması, yeni LFS sistemi için bir çekirdeğin (kernel) derlenmesi ve LFS sisteminin başlangıçta önyükleme için seçilebilmesi için GRUB önyükleyicisinin yüklenmesi ele alınmaktadır.
 
@@ -581,7 +581,7 @@ LFS sistemini önyüklenebilir hale getirildiği bölüm. Bu bölümde `/etc/fst
 
 <img width="702" height="283" alt="image15" src="https://github.com/user-attachments/assets/6db2561e-bd03-4a1d-93cf-486210bfa82c" />
 
-## 11. bölüm: Açılış 
+## 11. bölüm: LFS Açılış 
 
 <img width="1122" height="813" alt="image11" src="https://github.com/user-attachments/assets/5cf47ebf-9b90-404c-96c4-d2a3e89a92e5" />
 
