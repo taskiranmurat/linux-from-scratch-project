@@ -28,7 +28,7 @@ Sistem inşası sırasında **LFS 12.4** standartları ve dökümantasyonu bireb
 | Bileşen / Özellik | Kullanılan Teknoloji / Versiyon |
 | :--- | :--- |
 | **Host İşletim Sistemi** | Debian 12 (Bookworm) |
-| **Sanallaştırma Ortamı** | VMware Workstation / ESXi |
+| **Sanallaştırma Ortamı** | VMware Workstation |
 | **LFS Versiyonu** | LFS v12.4 |
 | **Hedef Çekirdek (Kernel)** | Linux Kernel v6.16.1 |
 | **Dosya Sistemi Yapısı** | Ext4 ) |
@@ -279,38 +279,229 @@ Bu bölümde LFS sistemi için gerekli olan temel kullanıcı araçları ve derl
 
 Bu bölümde aşağıdaki paketleri kurup kitaba göre yapılandıracağız. Paketler gruplayarak anlatılmıştır;
 
+### 6.1 Paketler
+
+* **Metin işleme ve temel Unix araçları (M4, Sed, Grep, Gawk, Diffutils)**
+Metin işleme araçları (sed, grep, gawk, diffutils) derlenerek betiklerin, configure script’lerin ve build sistemlerinin düzgün çalışması sağlanmıştır. Bu araçlar kaynak kodların işlenmesi ve yamaların uygulanması için kritik öneme sahiptir.
+
+* **Dosya ve arşiv yönetimi araçları (Tar, Xz, Gzip, File)**
+Arşiv ve dosya tanıma araçları kurularak kaynak paketlerin açılması, sıkıştırılması ve dosya tiplerinin doğru şekilde algılanması sağlanmıştır.
+
+* **Temel sistem komutları (Coreutils, Findutils)**
+Coreutils ve Findutils paketleri ile ls, cp, mv, chmod, find gibi temel sistem komutları LFS ortamına kazandırılmıştır. Bu araçlar olmadan bir Linux sisteminin kullanılabilir olması mümkün değildir.
+
+* **Kabuk ve terminal altyapısı (Bash, Ncurses)**
+Bash kabuğu ve Ncurses kütüphanesi derlenerek LFS sisteminde komut satırı etkileşimi sağlanmıştır. Ncurses terminal tabanlı uygulamaların doğru şekilde çalışması için gereklidir.
+
+* **Derleme araçları (Make, Patch)**
+Make ve Patch araçları, yazılım paketlerinin derlenmesi ve kaynak kodlara yamaların uygulanabilmesi için kurulmuştur. Bu araçlar LFS sisteminin kendi yazılımlarını derleyebilmesi açısından zorunludur.
+
+* **Binutils – Pass 2**
+ Bu aşamada Binutils ikinci kez derlenerek LFS sistemine daha uyumlu bir linker ve assembler elde edilmiştir.
+
+* **GCC – Pass 2**
+GCC Pass 2, LFS sisteminin kendi kendini derleyebilmesinin temelini oluşturur.
+
+Bu paketleri önceki bölümde olduğu gibi teker teker tar ile çıkarılıp daha sonra kitaptaki talimatlara göre kurulmuştur.
+
+Chapter 6’da LFS sistemi için gerekli olan tüm temel kullanıcı araçları ve derleyiciler geçici olarak oluşturulmuş, sistem chroot ortamına girmeye hazır hale getirilmiştir.
+
+## Bölüm 7: Chroot Ortamına Giriş ve Geçici Araçların İnşası
+
+Bu bölümde sistemden (Host - Debian) tamamen izole edilmiş, kendi içine kapalı bir ortam oluşturulur. Artık paketleri ana sistemin kütüphaneleriyle değil, bölüm 6'da oluşturduğumuz temiz araçlarla derleyeceğiz.
+
+#### Bu Bölümde Yapılacaklar:
+* Changing Ownership
+* Preparing Virtual Kernel File Systems
+* Entering the Chroot Environment
+* Creating Directories
+* Creating Essential Files and Symlinks
+* Ek Paketlerin Derlenmesi
+* Cleaning Up and Saving the Temporary System
+
+---
+
+### Changing Ownership
+Şu anda, `$LFS` altındaki tüm dizin hiyerarşisinin sahibi, yalnızca ev sahibi (host) sistemde mevcut olan `lfs` kullanıcısıdır. Eğer `$LFS` altındaki dizinler ve dosyalar olduğu gibi bırakılırsa, karşılık gelen bir hesabı bulunmayan bir kullanıcı kimliğine (UID) ait olacaklardır. Bu durum tehlikelidir; çünkü daha sonra oluşturulacak bir kullanıcı hesabı bu aynı kullanıcı kimliğini (UID) alabilir ve `$LFS` altındaki tüm dosyaların sahibi haline gelebilir. Bu da söz konusu dosyaları olası kötü niyetli müdahalelere açık hale getirir.
+
+Bu aşamada LFS dizin ağacının sahipliği `root` kullanıcısına devredilmiştir. Önceki bölümlerde derleme işlemleri `lfs` kullanıcısı ile yapılırken, chroot ortamına geçiş öncesinde sistem dosyalarının `root` tarafından yönetilmesi gerekmektedir.
+
+### Preparing Virtual Kernel File Systems
+Çekirdek (Kernel) ile iletişim kurabilmek için `/dev`, `/proc`, `/sys` ve `/run` gibi sanal dosya sistemleri ana sistemden LFS alanına bağlanır. Bu chroot içindeki sistemin donanım ve süreç bilgilerine erişebilmesini sağlar.
+
+<img width="551" height="136" alt="image21" src="https://github.com/user-attachments/assets/44f6545e-1ee7-4570-a42d-0a341fd83b77" />
+
+Klasörler oluşturuldu sonraki işlem mount etmektir.
+
+### Entering the Chroot Environment
+`chroot` komutu ile sistem kök dizini `/mnt/lfs` olacak şekilde yeni bir çalışma ortamına girilmiştir. Bu noktadan itibaren çalıştırılan tüm komutlar LFS sistemine aitmiş gibi davranır. Bu andan itibaren çalıştırılan komutlar Debian sistemine zarar veremez. Artık tamamen LFS'in kendi içindeyiz.
+
+<img width="594" height="211" alt="image4" src="https://github.com/user-attachments/assets/de2ed6ca-7071-42c6-a024-e922b857fc2e" />
 
 
+### Creating Directories
+LFS sistemi için gerekli olan temel dizin yapısı (/bin, /lib, /usr, /etc vb.) oluşturulmuştur. Bu dizinler, standart bir Linux sisteminde bulunması gereken hiyerarşik dizin yapısı.
 
+<img width="833" height="587" alt="image18" src="https://github.com/user-attachments/assets/f212c712-ef7e-44ff-8075-2e90f2f91f5e" />
 
+<img width="927" height="831" alt="image1" src="https://github.com/user-attachments/assets/a0f49472-d824-4a5c-8af9-4828276d4bf0" />
 
+<img width="863" height="300" alt="image22" src="https://github.com/user-attachments/assets/9027c5d7-81bf-44f3-952d-5ffcba769380" />
 
+Dizinler oluşturuldu.
 
+### Creating Essential Files and Symlinks
+Sistem çalışması için gerekli olan temel yapılandırma dosyaları ve sembolik linkler oluşturulmuştur. Özellikle `/bin`, `/lib` ve `/usr` dizinleri arasındaki bağlantılar sistemin tutarlı çalışması için önemlidir.
 
+### Ek Geçici Araçların Derlenmesi (Gettext, Python, Perl vb.)
+Bu bölümdeki paketler nihai sistemi kurarken kullanılacak olan yardımcı araçlardır. Ana sistemdeki versiyonlarla uyumsuzluk yaşamamak için LFS'nin kendi temiz kütüphanelerini kullanan bu araçlar chroot içinde derlenir.
 
+### Cleaning Up and Saving the Temporary System
+Bu aşamada geçici dosyalar temizlenmiş ve sistem bir sonraki bölüme hazır hale getirilmiştir. Amaç mümkün olan en sade ve kontrollü bir temel sistem bırakmaktır.
 
+## Bölüm 8: Temel Sistem Paketleri ve İşlevleri
 
+LFS sisteminin gerçek anlamda oluşturulduğu bölümdür. Hepsi sırayla açıklanmıştır ve bu sırayla chroot içinde derlenmiştir. Sırayla gidilmelidir çünkü birbirlerine bağımlılıkları vardır.
 
+* **Man-pages-6.15:** Sistem komutlarının kullanım kılavuzlarını ve dökümantasyonunu sağlar. 2400’den fazla man sayfası içermektedir.
+* **Iana-Etc-20250807:** Network servisleri ve protokolleri için veri sağlar.
+* **Glibc-2.42:** Glibc paketi ana C kütüphanesini içerir. Bu kütüphane bellek ayırma, dizin arama, dosya açma ve kapatma, dosya okuma ve yazma, dize işleme, desen eşleştirme, aritmetik işlemler ve benzeri temel rutinleri sağlar.
+* **Zlib-Bzip2-Xz-Lz4-Zstd:** Bu paketler dosyaları sıkıştırmak ve açmak için kullanılan programları içerir. LZ4 ve Zstd gerçek zamanlı hız gerektiren (kernel boot, loglama) işlemlerde tercih edilirken; Xz ve Bzip2, kaynak kod paketlerinin depolama alanından tasarruf etmesi amacıyla kullanılır. Zlib ise sistem genelinde en yaygın kullanılan standart uyumluluk katmanıdır.
 
+* **File-5.46:** File paketi verilen bir dosyanın veya dosyaların türünü belirlemek için kullanılan bir yardımcı program içerir.
+* **Readline-8.3:** Komut satırında düzenleme ve history özelliklerini sağlar.
+* **M4-1.4.20:** Yazılım yapılandırma ve kod üretim süreçlerinin temel makro motorudur.
+* **Bc-7.0.3:** Bu paket sayısal işlem yapabilen bir programlama dili içerir.
+* **DejaGNU-1.6.3:** DejaGnu paketi GNU araçları üzerinde test paketlerini çalıştırmak için bir çerçeve içerir.
+* **Pkgconf-2.5.1:** Derleme sırasında kütüphane bağımlılıklarını ve yollarını yönetir.
+* **Binutils-2.45:** Kaynak kodun makine diline çevrilmesi (link/assemble) için gereken araç setidir.
+* **GMP-MPFR-MPC:** Bu 3 paket GCC derleyicisi için gerekli olan yüksek hassasiyetli matematiksel hesaplama ve karmaşık sayı aritmetiği kütüphaneleridir.
+* **Attr, ACL, Libcap:** Bu paketler standart Linux izin sistemini modern güvenlik ihtiyaçlarına göre genişletir. Attr ve ACL ile dosya bazlı çok detaylı erişim kısıtlamaları getirilirken, Libcap ile “root” yetkileri parçalanarak süreç bazlı güvenlik sağlanmıştır. Bir programın tüm sisteme hükmetmek yerine, sadece ihtiyacı olan özel yetkiyi kullanmasına izin vererek sistem güvenliğini artırır.
+* **Libxcrypt-4.4.38:** Parolaların tek yönlü karma algoritmasıyla işlenmesi için modern bir kütüphane içermektedir.
+* **Shadow-4.18.0:** Kullanıcı ve grup hesaplarını güvenli bir şekilde yönetmek için kullanılan bir araç setidir. "Shadow" ismi, kullanıcı şifrelerinin herkesin okuyabildiği `/etc/passwd` dosyası yerine, sadece root kullanıcısının erişebildiği `/etc/shadow` dosyasında gizlenmesi (shadowing) tekniğinden gelir.
+  * `useradd` / `usermod` / `userdel`: Kullanıcı hesabı oluşturma, düzenleme ve silme işlemleri.
+  * `passwd`: Kullanıcı şifrelerini değiştirme ve hash algoritmalarını uygulama.
+  * `groupadd` / `groupmod`: Kullanıcı gruplarını yönetme.
+  * `login`: Kullanıcı kimlik doğrulamasını yaparak oturum açma sürecini yönetme.
+  * `chage`: Şifre geçerlilik süresi ve hesap kilitleme gibi "eskime" politikalarını belirleme.
+* **GCC-15.2.0:** C, C++ ve diğer dillerdeki kaynak kodlarını, bilgisayarın işlemcisinin anlayabileceği binary dönüştüren ana derleyicidir.
 
+* **Ncurses-6.5-20250809:** Terminal ekranında metin tabanlı kullanıcı arayüzleri oluşturulmasını sağlar. Karakterlerin ekranda belirli koordinatlara yerleştirilmesine, renklerin yönetilmesine ve pencerelerin çizilmesine olanak tanır. System konfigürasyonu yaparken mavi gri çizgili ekranı ncurses yapar.
+* **Sed-4.9:** Bir metin akışı veya dosya üzerinde; arama, bulma, değiştirme, ekleme ve silme gibi işlemleri dosyayı interaktif bir editörle Vim gibi açmaya gerek kalmadan gerçekleştirir.
+* **Psmisc-23.7:** Sistemdeki süreçleri görüntülemek, analiz etmek ve yönetmek için özelleşmiş araçlar sunar.
+  * `pstree`: Çalışan süreçleri birbirleriyle olan bağlarına göre bir "aile ağacı" şeklinde görselleştirir. Hangi sürecin hangisi tarafından başlatıldığını görmeyi sağlar.
+  * `killall`: Bir süreci ismiyle sonlandırır.
+* **Gettext-0.26:** Yazılımların mesajlarını, hata çıktılarını ve menülerini kullanıcının diline çevirmek için kullanılan standart kütüphane ve araç setidir.
+* **Bison-3.8.2:** Karmaşık yazılımların ve dillerin gramer yapısını çözümleyen bir ayrıştırıcı oluşturucudur. Bu paket özellikle derleme süreçlerinde kaynak kodun mantıksal analizinin yapılabilmesi için temel bir altyapı sunmaktadır.
+* **Grep-3.12:** Dosyaların içeriğinde arama yapmak için kullanılan programlar içerir.
+* **Bash-5.3:** Komutları yorumlayan, işleyen ve kernele ileten ana komut satırı kabuğudur Shell.
+* **Libtool-2.5.4:** Paylaşımlı (shared) ve statik (static) kütüphanelerin oluşturulması, yüklenmesi ve yönetilmesi süreçlerini basitleştiren genel bir kütüphane destek betiğidir.
+* **GDBM-1.26:** GNU Database Manager, sistemindeki verilerin key-value mantığıyla çok hızlı bir şekilde saklanmasını ve okunmasını sağlayan geleneksel bir veritabanı kütüphanesidir.
+* **Gperf-3.3:** Bir anahtar kümesinden mükemmel bir karma fonksiyonu oluşturur.
+* **Expat-2.7.1:** XML verilerini okumak ve anlamlandırmak için kullanılan C dilinde yazılmış XML belgelerini ayrıştırmak (parsing) için kullanılan bir kütüphanedir. 
+* **Inetutils-2.6:** Temel ağ iletişimi için programlar içerir.
+  * `ping`: Hedef sunucuya ICMP paketleri göndererek ağ erişilebilirliğini ve gecikme süresini test eder.
+  * `hostname`: Sistemin ağdaki ismini görüntüler veya ayarlar.
+  * `ifconfig`: Arayüzlerini (interfaces) görüntülemek ve yapılandırmak için kullanılan geleneksel araçtır.
+  * `telnet` / `ftp`: Uzak sunuculara bağlantı ve dosya transferi için kullanılan klasik istemcilerdir.
+  * `traceroute`: Paketlerin hedefe giderken geçtiği router'ları ve ağ yolunu izler.
+* **Less-679:** Terminal üzerinde büyük metin dosyalarını veya log çıktılarını sayfa sayfa okumanı sağlayan akıllı bir dosya görüntüleyicidir.
+* **Perl-5.42.0:** Genel amaçlı bir programlama dili ve script interpreter’dır.
+* **XML::Parser-2.47:** Perl programlama dili için yazılmış bir arayüz modülüdür. Düşük seviyeli C kütüphanesi olan Expat'ı kullanarak, Perl betiklerinin XML belgelerini çok hızlı bir şekilde okumasını, parçalamasını ve işlemesini sağlar.
+* **Intltool-0.51.0:** Sistemdeki çeşitli dosya formatlarından (XML, desktop dosyaları, şema dosyaları vb.) çevrilebilir metinleri ayıklayan ve bunları Gettext ile uyumlu hale getiren bir araç setidir.
+* **Autoconf-2.72:** Yazılımın sisteme uygun şekilde derlenmesini sağlayan configure scriptini üretir.
+* **Automake-1.18.1:** Geliştiricilerin yazdığı basit ve yüksek seviyeli şablon dosyalarını (Makefile.am) make komutunun anlayabileceği karmaşık ve detaylı Makefile dosyalarına dönüştürür.
+* **OpenSSL-3.5.2:** Ağ üzerinden iletilen verilerin üçüncü şahıslar tarafından okunmasını engelleyen TLS (Transport Layer Security) ve SSL (Secure Sockets Layer) protokollerini uygular. Ayrıca dosya şifreleme, dijital imza ve sertifika yönetimi (CA) için gerekli araçları sunar.
+  * `libcrypto`: Genel amaçlı bir kriptografi kütüphanesidir. Şifreleme algoritmalarını ve karma (hashing) fonksiyonlarını barındırır.
+  * `libssl`: TLS protokolünün uygulanmasını sağlar; güvenli bağlantıların (HTTPS gibi) temelidir.
+  * `openssl` (komut satırı): Sertifika oluşturma, şifreleme testleri ve anahtar üretimi için kullanılan çok güçlü bir araçtır.
+* **Libelf from Elfutils-0.193:** Sistemdeki ikili dosyaların ELF (Executable and Linkable Format) formatı iç yapısını analiz eden ve yöneten temel kütüphanedir.
+* **Libffi-3.5.2:** LFS sisteminde farklı programlama dilleri arasında dinamik bir iletişim köprüsü kuran kritik bir arayüz kütüphanesidir. Özellikle Python gibi yüksek seviyeli dillerin, sistemin en alt katmanındaki C fonksiyonlarını çalışma zamanında (run-time) çağırabilmesini mümkün kılar.
 
+* **Python-3.13.7:** LFS sisteminin en güçlü otomasyon ve uygulama geliştirme platformudur.
+* **Flit-Core-3.12.0:** Python tabanlı kütüphanelerin modern standartlarda paketlenmesini ve kurulmasını sağlayan hafif bir inşa motorudur.
+* **Packaging-25.0:** Python projelerinde sürüm, bağımlılık ve paket bilgilerini yönetmek için kullanılır.
+* **Wheel-0.46.1:** Python paketlerinin hızlı ve sorunsuz kurulması için gerekli altyapı. Python paketlerini önceden derlenmiş, taşınabilir “wheel” formatında sunar. Dosya uzantısı: `.whl`. Pip ve diğer paket yöneticileri wheel formatını desteklemek için bu kütüphaneye ihtiyaç duyar.
+* **Setuptools-80.9.0:** Python paketlerini indirmek, derlemek, kurmak, yükseltmek ve kaldırmak için kullanılan bir araçtır.
+* **Ninja-1.13.1:** Yazılım derleme süreçlerini hızlandırmak için tasarlanmış düşük seviyeli bir inşa aracıdır.
+* **Meson-1.8.3:** Hem son derece hızlı hem de olabildiğince kullanıcı dostu olacak şekilde tasarlanmış açık kaynaklı bir derleme sistemidir.
+* **Kmod-34.2:** Linux kernel modüllerini yüklemek, kaldırmak ve yönetmek için kullanılır. Çekirdeğe sonradan eklenen donanım sürücüleri veya özellikleri kontrol eder. Modül durumunu görüntüler veya modülleri otomatik yükler.
+  * `lsmod`: Yüklü modülleri listeler.
+  * `modprobe`: Modül yükler veya çıkarır.
+  * `depmod`: Modül bağımlılıklarını yönetir.
+* **Coreutils-9.7:** Her işletim sisteminin ihtiyaç duyduğu temel yardımcı programları içerir.
+  * `ls`: Dosyaları listeler.
+  * `cp`: Kopyalar.
+  * `mv`: Taşır.
+  * `rm`: Siler.
+  * `mkdir`: Klasör oluşturur.
+  * `chmod`: İzin değiştirir.
+  * `chown`: Sahip değiştirir.
+  * `cat`: Okuma.
+  * `head` / `tail`: Baş/son okuma.
+  * `sort`: Sıralama.
+  * `cut`: Kesme.
+  * `whoami`: Kullanıcı kimliği.
+  * `uptime`: Çalışma süresi vb…
+ 
+* **Diffutils-3.12:** Dosyalar veya dizinler arasındaki farklılıkları gösteren programlar içerir.
+* **Gawk-5.3.2:** Metin dosyalarını satır satır okuyup işlemek, filtrelemek ve dönüştürmek için kullanılır.
+* **Findutils-4.10.0:** Sistem içinde dosya ve dizin aramak, filtrelemek ve işlem yapmak için kullanılır.
+  * `find`: Dosya arar.
+  * `xargs`: Komutlara argüman gönderir.
+  * `locate`: Hızlı dosya arama (veritabanı üzerinden) yapar.
+* **Groff-1.23.0:** Metin ve görüntüleri işlemek ve biçimlendirmek için programlar içerir.
+* **GRUB-2.12:** LFS sisteminin "başlatıcısı" ve işletim sistemi ile donanım arasındaki ilk gerçek temastır. Bilgisayar açıldığında BIOS veya UEFI'den kontrolü devralan, çekirdeği (kernel) belleğe yükleyen ve sistemi ayağa kaldıran Grand Unified Bootloader'dır.
+* **Gzip-1.14:** Dosyaları sıkıştırmak ve açmak için programlar içerir.
+  * `gzip`: Dosyaları sıkıştırır.
+  * `gunzip`: .gz uzantılı sıkıştırılmış dosyaları orijinal haline geri döndürür.
+* **IPRoute2-6.16.0:** Ağ (network) ayarlarını görüntüleme ve yönetme işlemlerini yapar.
+  * `ip`: Paketin kalbidir. `ip addr` (adresleme), `ip link` (arayüz yönetimi), `ip route` (yönlendirme tablosu) gibi komutlarla ağın her detayını kontrol eder.
 
+* **Kbd-2.8.0:** Linux’ta klavye düzeni (layout), tuş davranışları ve konsol ayarlarını yönetir.
+* **Libpipeline-1.5.8:** Unix/Linux pipeline’larını yönetmeyi kolaylaştırır. Birden fazla komutun çıktısını bir sonraki komuta aktarmayı kolaylaştırır. Pipe (|) kullanımını programatik hale verir.
+* **Make-4.4.1:** Kaynak kodu derlemek ve programları oluşturmak için kullanılır. Makefile içindeki kurallara göre hangi dosyanın yeniden derleneceğini belirler. Değişiklikleri takip ederek gereksiz derlemeleri önler.
+* **Patch-2.8:** Kaynak kod dosyalarına düzeltme (diff) eklerini uygular.
+* **Tar-1.35:** Tar paketi, tar arşivleri oluşturmanın yanı sıra çeşitli diğer arşiv işlemlerini gerçekleştirme olanağı sağlar. Tar, önceden oluşturulmuş arşivlerden dosyaları çıkarmak, ek dosyaları depolamak veya önceden depolanmış dosyaları güncellemek veya listelemek için kullanılabilir.
+* **Texinfo-7.2:** Yazılımların kılavuzlarını ve dökümantasyonunu oluşturmak için kullanılır. GNU yazılımları genellikle Texinfo ile belgelenir.
+  * `make info`: Terminal için doküman üretir.
+  * `make pdf`, `make html`: Basılı veya web dokümanı üretir.
+* **Vim-9.1.1629:** Terminal tabanlı metin düzenleme ve programlama editörüdür. Kod yazmak, konfigürasyon dosyalarını düzenlemek, dosya yönetmek için kullanılır.
+* **MarkupSafe-3.0.2:** Python yardımcı kütüphanesidir. Python’da güvenli metin işleme sağlar, özellikle HTML veya XML’deki özel karakterleri kaçırmak (escape) için kullanılır. Yani Python uygulamalarında güvenli metin işleme için gerekli altyapı.
+* **Jinja2-3.1.6:** Python tabanlı şablon (template) motorudur. Python ile dinamik içerik oluşturmayı kolaylaştırır, özellikle web uygulamalarında HTML veya metin dosyaları üretmek için kullanılır.
+* **Udev from Systemd-257.8:** Linux cihaz yönetim sistemidir. Linux sistemde donanım cihazlarının (USB, disk, ağ kartı vb.) yönetimini ve otomatik tanınmasını sağlar.
+* **Man-DB-2.13.1:** Man sayfalarını bulmak ve görüntülemek için programlar içerir.
+  * `apropos`: Belirli bir anahtar kelimeye göre tüm kılavuz sayfalarının başlıklarında arama yapar (örneğin: `apropos network`).
+  * `whatis`: Bir komutun ne işe yaradığını tek satırlık bir özetle açıklar.
+ 
+ * **Procps-ng-4.0.5:** İşletim sisteminde o an çalışan süreçlerin durumunu, bellek kullanımını ve işlemci yükünü izlemek, yönetmek için kullanılan bir kütüphane ve araçlar kümesidir.
+  * `top`: Sistem kaynaklarını (CPU, RAM) en çok tüketen süreçleri canlı ve interaktif bir şekilde listeler.
+  * `ps`: O an çalışan süreçlerin anlık bir "fotoğrafını" çeker (Process Status).
+  * `free`: Sistemin toplam, boş ve kullanılan bellek (RAM/Swap) miktarını gösterir.
+  * `kill`: Belirli bir sürece sinyal göndererek durdurma, yeniden başlatma, sonlandırma yönetilmesini sağlar.
+  * `sysctl`: Çekirdek parametrelerini (kernel parameters) çalışma anında görüntülemeye ve değiştirmeye yarar.
+  * `uptime`: Sistemin ne kadar süredir açık olduğunu ve ortalama yükü gösterir.
 
+* **Util-linux-2.41.1:** Linux çekirdeğiyle en alt seviyede konuşan, disk bölümlendirmeden terminal yönetimine, kullanıcı girişlerinden dosya sistemi bağlamaya kadar sistemin çalışması için gereken en kritik düşük seviyeli araçları barındırır.
+  * **Disk Yönetimi:** `fdisk`, `cfdisk` (disk bölümlendirme), `mount`/`umount` (diskleri sisteme bağlama/ayırma).
+  * **Terminal ve Giriş:** `login` (kullanıcı girişi), `agetty` (terminal bağlantısı), `more` (metin görüntüleme).
+  * **Sistem Bilgisi:** `lscpu` (işlemci detayları), `lsblk` (blok aygıtları/disk listesi).
+  * **Dosya Sistemi:** `mkfs` (dosya sistemi oluşturma/formatlama), `fsck` (dosya sistemi kontrolü).
+  * **Zaman ve Kimlik:** `hwclock` (donanım saati yönetimi), `su` (kullanıcı değiştirme).
+  * *Not:* Bu paket olmadan bir diski formatlayamaz, sisteme bağlayamaz ve hatta kullanıcı girişi yapamazsın. LFS sisteminin "kullanılabilir" bir bilgisayar haline gelmesini sağlayan ham mekanik araçlardır.
 
+* **E2fsprogs-1.47.3:** Ext2, ext3, ext4 dosya sistemlerini oluşturmak, doğrulamak ve yönetmek için kullanılan temel kütüphaneleri ve programları sağlar.
+  * `mke2fs` / `mkfs.ext4`: Bir disk bölümünü Ext4 formatında biçimlendirir (dosya sistemini oluşturur).
+  * `e2fsck`: Dosya sistemindeki hataları tarar ve onarır (Windows'taki chkdsk karşılığı).
+  * *Not:* Bir disk bölümü oluşturmak yetmez; o bölümün üzerine veri yazılabilmesi için bir "düzen" (dosya sistemi) kurulmalıdır. E2fsprogs bu düzenin mimarıdır.
 
+* **Sysklogd-2.7.2:** Sysklogd sistemin merkezi logging mekanizmasıdır. Çekirdek ve kullanıcı alanı uygulamalarından gelen tüm operasyonel verileri sistem kayıtlarına dönüştürerek, sistemin izlenebilirliğini, güvenliğini ve hata teşhis süreçlerini yönetir. `/var/log` altındaki dosyalara kaydeden temel servistir.
+* **SysVinit-3.14:** Sistemin başlatılmasını, çalıştırılmasını ve kapatılmasını kontrol eden programlar içerir.
+* **Stripping:** Stripping aşaması, LFS sistemindeki ikili dosyaları (binary) ve kütüphaneleri gereksiz hata ayıklama verilerinden arındırarak optimize eder. Bu işlem, sistemin disk kapladığı alanı minimize ederken, programların yüklenme hızını artırarak saf ve performanslı bir işletim sistemi yapısı sunar.
 
+<img width="518" height="161" alt="image26" src="https://github.com/user-attachments/assets/dcb77004-cd34-41fc-a9bf-7fc495361e19" />
 
-
-
-
-
-
-
-
-
-
-
-
+Stripping yapılmadan önce 4.6 Gb civarındaydı stripping yapıldıktan sonra 1.9 gb düşmüştür.
 
 
 
