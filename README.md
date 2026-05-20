@@ -565,16 +565,39 @@ Ağ arayüzü ve DNS tanımlamalarının ardından, sistemin dışarıdaki bir D
 
 LFS sistemini önyüklenebilir hale getirildiği bölüm. Bu bölümde `/etc/fstab` dosyasının oluşturulması, yeni LFS sistemi için bir çekirdeğin (kernel) derlenmesi ve LFS sisteminin başlangıçta önyükleme için seçilebilmesi için GRUB önyükleyicisinin yüklenmesi ele alınmaktadır.
 
+<img width="964" height="461" alt="image7" src="https://github.com/user-attachments/assets/804d1c10-ec98-4b2e-a0b1-214334a63af6" />
+
+<img width="692" height="343" alt="image17" src="https://github.com/user-attachments/assets/101a6cd2-9cf1-4481-aeed-9e5be3f2ecd9" />
+
+/etc/fstab dosyası oluşturuldu. sdb diskinin uuıd’lerine göre yapılandırıldı.
+
+* **Linux-6.16.1:** İşletim sisteminin çekirdeğini oluşturur. Donanım kaynaklarını (CPU, RAM, Disk) uygulamalar arasında paylaştırır ve sistemin fiziksel birimleriyle (VMware sürücüleri, ağ kartları vb.) doğrudan iletişim kurar.
+
+`make menuconfig` komutu ile aşağıdaki bölüme gireriz. Kitaba göre yönlendirilip yapılandırılmalıdır. Debian VMware de olduğu için Debian’ın diskleri varsayılanlar arasında SCSI arayüzü ile tanımlanmıştır; o yüzden işaretlemeleri yaparken SCSI ile olan işaretlemeler unutulmamalı.
+
+<img width="916" height="491" alt="image14" src="https://github.com/user-attachments/assets/9ab3cf4d-9061-42ed-93b5-47ed149861f0" />
+
+* **GRUB Yapılandırma Dosyasının Oluşturulması:** `/boot/grub/grub.cfg` dosyasını oluşturarak, sistemin açılış menüsünü ve boot seçeneklerini tanımlar. GRUB'un otomatik olarak değil, LFS mimarisine uygun şekilde manuel yapılandırıldığı aşamadır.
+
+<img width="702" height="283" alt="image15" src="https://github.com/user-attachments/assets/6db2561e-bd03-4a1d-93cf-486210bfa82c" />
+
+## 11. bölüm: Açılış 
+
+<img width="1122" height="813" alt="image11" src="https://github.com/user-attachments/assets/5cf47ebf-9b90-404c-96c4-d2a3e89a92e5" />
+
+LFS'in ayağa kalktığı  ve boot edildiği güzel bir görüntüdür bu.
+
+<img width="661" height="498" alt="image5" src="https://github.com/user-attachments/assets/94fec95a-a8df-4cd7-9a30-19a230c52af5" />
 
 
+## Test
 
+<img width="383" height="180" alt="image24" src="https://github.com/user-attachments/assets/949504c9-7a10-4f64-b598-9934ea186f1f" />
 
+hostname,kimliği ve sürüm bilgisi görebiliyoruz. lfs12-4_Murat bizim hostname ismimiz login root password:2553796mu
 
+<img width="587" height="299" alt="image9" src="https://github.com/user-attachments/assets/dc49190a-03b5-4835-943d-ed349c3a5ad6" />
 
-
-
-
-
-
+Ping atabiliyoruz ve internete çıkabiliyoruz.
 
 
