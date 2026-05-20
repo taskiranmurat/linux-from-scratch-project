@@ -503,6 +503,75 @@ LFS sisteminin gerçek anlamda oluşturulduğu bölümdür. Hepsi sırayla açı
 
 Stripping yapılmadan önce 4.6 Gb civarındaydı stripping yapıldıktan sonra 1.9 gb düşmüştür.
 
+## Bölüm 9: Sistem Yapılandırması
+
+LFS sürecinde sistemin artık çalışabilir ve boot edilebilir hale getirildiği bölümdür. Bu bölümün temel amacı kernel yüklendikten sonra sistemin nasıl davranacağını, donanımları nasıl tanıyacağını ve dış dünya ile nasıl iletişim kuracağını belirleyen kurallar setini (konfigürasyon dosyalarını) oluşturmaktır.
+
+### LFS-Bootscripts-20250827
+Sistemin açılış ve kapanış süreçlerini yöneten operasyonel betikler bütünüdür. Donanım hazırlığı, dosya sistemi kontrolü ve ağ servislerinin başlatılması gibi kritik görevleri hiyerarşik bir düzende yürüterek, sistemin kararlı bir şekilde çalışma durumuna geçmesini sağlar.
+
+
+ 
+* **Genel network ayarları**
+<img width="736" height="415" alt="image8" src="https://github.com/user-attachments/assets/4d9e3e94-e5a8-4484-9c24-38fbb5c31eeb" />
+
+
+
+LFS sisteminin açılışta ağa otomatik olarak bağlanabilmesi ve kalıcı bir IP adresine sahip olması için ağ arayüzü konfigürasyon dosyası oluşturulmuştur. 
+
+`/etc/sysconfig/` dizinine geçiş yapılarak `ifconfig.ens33` dosyası statik IP mimarisine uygun şekilde şu parametrelerle yapılandırılmıştır:
+
+* **DNS ayarları**
+
+<img width="615" height="201" alt="image23" src="https://github.com/user-attachments/assets/ad93fd3a-e2ba-484a-bd84-63182f8fae99" />
+
+DNS istemci yapılandırma dosyası olan `/etc/resolv.conf`, `cat > /etc/resolv.conf << "EOF"` komut blokları kullanılarak chroot ortamında sıfırdan oluşturulmuştur. Bu sayede internete çıkabilir.
+
+* **Hostname ayarları**
+
+<img width="653" height="44" alt="image2" src="https://github.com/user-attachments/assets/bf9e6f57-8adc-4672-901f-08e66b3e2fbb" />
+
+adı lfs12-4_Murat olmuştur.
+
+* **Host ayarları(/etc/hosts)**
+
+<img width="490" height="232" alt="image20" src="https://github.com/user-attachments/assets/104550e3-4284-4d14-8f69-0256f86002de" />
+
+
+
+Ağ arayüzü ve DNS tanımlamalarının ardından, sistemin dışarıdaki bir DNS sunucusuna ihtiyaç duymadan kendi ismini (hostname) ve yerel adresleri çok hızlı bir şekilde çözümleyebilmesi amacıyla `/etc/hosts` dosyası yapılandırılmıştır.
+
+ LFS sisteminin ağdaki tam nitelikli alan adı (FQDN) `lfs12-4_Murat.localdomain` ve kısa adı `lfs12-4_Murat` olarak tanımlandı ve ilgili IP adresleriyle şu şekilde eşleştirildi.
+
+ 127.0.0.1 localhost.localdomain 
+ 
+ localhost Standart IPv4 loopback adresidir. Sistemin kendi içindeki ağ servislerinin kesintisiz haberleşmesini sağlar.
+
+	127.0.1.1 lfs12-4_Murat.localdomain 
+ lfs12-4_Murat Ağ kartı aktif olmasa bile bazı sistem servislerinin ve uygulamaların hostname üzerinden yerel makineye hızlıca erişebilmesi için tanımlanan döngü adresidir.
+
+	192.168.1.75 lfs12-4_Murat.localdomain 
+ lfs12-4_Murat ens33 ağ kartına atanan statik yerel IP adresi ile sistemin ismi birbirine bağlanmıştır. Bu sayede yerel ağdaki diğer cihazlar ve iç servisler sisteme bu isimle erişebilir hale getirilmiştir.
+
+
+* **Consol,Klavye ve font ayarları**
+
+<img width="392" height="215" alt="image10" src="https://github.com/user-attachments/assets/fb83eeb8-c008-48d3-94ff-c74af2bc58a6" />
+
+/etc/sysconfig/console dan ayarlanabilir.
+
+
+## 10. Bölüm: LFS Sistemini Önyüklenebilir Hale Getirme
+
+LFS sistemini önyüklenebilir hale getirildiği bölüm. Bu bölümde `/etc/fstab` dosyasının oluşturulması, yeni LFS sistemi için bir çekirdeğin (kernel) derlenmesi ve LFS sisteminin başlangıçta önyükleme için seçilebilmesi için GRUB önyükleyicisinin yüklenmesi ele alınmaktadır.
+
+
+
+
+
+
+
+
 
 
 
